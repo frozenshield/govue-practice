@@ -12,8 +12,23 @@
       </template>
       <template #content>
         <div class="card-content">
-          <p>Your premium experience starts here!</p>
           <Button @click="handleLogin" label="Microsoft" icon="pi pi-microsoft" class="p-button-raised" />
+          <Button @click="manualLogin" label="Manual Login" icon="pi pi-user" class="p-button-raised" />
+          
+          <!-- dialog -->
+            <Dialog v-model:visible="isDialogVisible" modal header="Login" :style="{width: '25rem'}">
+                <div class="dialog-input">
+                    <label for="username" class="font-semibold w-6rem">Username</label>
+                    <InputText id="username" class="flex-auto" autocomplete="off" />
+                </div>
+                <div class="dialog-input">
+                    <label for="Password" class="font-semibold w-6rem">Password</label>
+                    <InputText id="password" class="flex-auto" autocomplete="off" />
+                </div>
+              
+
+            </Dialog>
+          
         </div>
       </template>
     </Card>
@@ -21,13 +36,23 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { msalInstance, loginRequest } from './msalConfig' // adjust path if needed
 import Card from 'primevue/card'
 import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
+import InputText from 'primevue/inputtext'
+
+const isDialogVisible = ref(false)
 
 const handleLogin = () => {
   msalInstance.loginRedirect(loginRequest)
 }
+
+const manualLogin = () => {
+  isDialogVisible.value = true
+}
+
 </script>
 
 <style scoped>
@@ -92,5 +117,12 @@ const handleLogin = () => {
 
 .p-button:hover {
   background: linear-gradient(135deg, #5a62e0 0%, #000bc7 100%);
+}
+
+.dialog-input {
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+  margin-bottom: 3rem;
 }
 </style>

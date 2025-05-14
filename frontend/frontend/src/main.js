@@ -11,6 +11,7 @@ import 'primeicons/primeicons.css';
 import InputText from 'primevue/inputtext';
 import Button from 'primevue/button';
 import Card from 'primevue/card';
+import Dialog from 'primevue/dialog';
 
 
 async function bootstrap() {
@@ -44,6 +45,7 @@ app.mount('#app')
 app.component('InputText', InputText);
 app.component('Button', Button);
 app.component('Card', Card);
+app.component('Dialog', Dialog)
 
 
 bootstrap()
