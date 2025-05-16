@@ -1,7 +1,9 @@
 import { createApp } from 'vue'
 import App from './App.vue'
+import router from './router'
 import PrimeVue from 'primevue/config';
 import { msalInstance} from './msalConfig'
+
 
 import 'primevue/resources/themes/lara-light-indigo/theme.css';
 import 'primevue/resources/primevue.min.css';
@@ -12,6 +14,9 @@ import InputText from 'primevue/inputtext';
 import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Dialog from 'primevue/dialog';
+import Message from 'primevue/message';
+import ToastService from 'primevue/toastservice';
+
 
 
 async function bootstrap() {
@@ -41,11 +46,15 @@ async function bootstrap() {
 const app = createApp(App);
 
 app.use(PrimeVue);
+app.use(router)
+app.use(ToastService)
 app.mount('#app')
 app.component('InputText', InputText);
 app.component('Button', Button);
 app.component('Card', Card);
 app.component('Dialog', Dialog)
+app.component('Message', Message)
+app.component('Toast', ToastService)
 
 
 bootstrap()

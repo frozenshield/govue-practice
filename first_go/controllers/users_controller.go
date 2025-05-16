@@ -6,6 +6,7 @@ import (
 
 	"github.com/frozenshield/first_go/database"
 	"github.com/frozenshield/first_go/models"
+	"github.com/frozenshield/first_go/utils"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -79,7 +80,14 @@ func LoginUser(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Successfully Logged in!!"})
+	token, err := utils.GenerateJWT(strconv.FormatUint(uint64(user.ID), 10))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to generate"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Successfully Logged in!!",
+		"token": token})
 }
 
 func UpdateUser(c *gin.Context) {
