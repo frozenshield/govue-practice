@@ -153,3 +153,41 @@ func GetPosts(c *gin.Context) {
 	c.JSON(http.StatusOK, posts)
 
 }
+
+func DeletePost(c *gin.Context) {
+	user_id, err := utils.GetUserId(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Token"})
+		return
+	}
+
+	id := c.Param("id")
+
+	post_id, err := strconv.Atoi(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Post ID"})
+		return
+	}
+
+	query := "DELETE FROM posts WHERE id = ? AND user_id = ?"
+	result, err := database.DB.Exec(query, post_id, user_id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
+		return
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check deleted post"})
+		return
+	}
+
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "post not found"})
+		return
+	}
+
+	c.JSON(http.statusOK, gin.H{"ok"})
+	return
+
+}
