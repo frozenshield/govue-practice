@@ -1,67 +1,155 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/frozenshield/first_go/database"
 	"github.com/frozenshield/first_go/models"
-
+	"github.com/frozenshield/first_go/utils"
 	"github.com/gin-gonic/gin"
 )
 
 func CreatePost(c *gin.Context) {
-	var post models.Post
-	if err := c.BindJSON(&post); err != nil {
-		c.JSON(http.StatusBadRequest, err.Error())
+	userId, err := utils.GetUserId(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	database.DB.Create(&post)
-	c.JSON(http.StatusOK, post)
+	var post models.Post
+	err_bind := c.ShouldBindJSON(&post)
+	if err_bind != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message:": "invalid JSON format"})
+		return
+	}
+
+	if post.Title == "" || post.Content == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error:": "Title and Content are required"})
+		return
+	}
+
+	if database.DB == nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error:": "Database COnnection not stablished"})
+		return
+	}
+
+	query := "INSERT INTO posts (user_id, title, content) VALUES (?, ?, ?)"
+	result, err := database.DB.Exec(query, userId, post.Title, post.Content)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to create post"})
+		return
+	}
+
+	insertedID, err := result.LastInsertId()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error:": "failed to get last inserted id"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":      insertedID,
+		"user_id": userId,
+		"title":   post.Title,
+		"content": post.Content,
+	})
+
 }
+
+// func GetPost(c *gin.Context) {
+// 	query := "SELECT * FROM posts"
+// 	result, err := database.DB.Exec()
+// 	}
 
 func UpdatePost(c *gin.Context) {
-	var post models.Post
-	id := c.Param("id")
-	if err := database.DB.First(&post, id).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid id"})
+
+	postID := c.Param("id")
+
+	id, err := strconv.Atoi(postID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error:": "Invalid post ID"})
 		return
 	}
 
-	var UpdatePost models.Post
-	if err := c.BindJSON(&UpdatePost); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message:": err.Error()})
+	userID, err := utils.GetUserId(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, "unauthorized access")
 		return
 	}
 
-	database.DB.Model(&post).Updates(UpdatePost)
-	c.JSON(http.StatusOK, gin.H{"message:": "Updated Successfully"})
-}
-
-func DeletePost(c *gin.Context) {
-	id := c.Param("id")
 	var post models.Post
-
-	if err := database.DB.First(&post, id).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message:": err.Error()})
+	post_err := c.ShouldBindJSON(&post)
+	if post_err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Input Data"})
+		return
 	}
 
-	database.DB.Delete(&post)
-	c.JSON(http.StatusOK, gin.H{"message:": "Deleted Successfully"})
+	if post.Content == "" || post.Title == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error:": "Title or content should not be empty"})
+		return
+	}
+
+	if database.DB == nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error:": "No Database Connection"})
+		return
+	}
+
+	query := "UPDATE posts SET title = ? , content = ? WHERE id = ? AND user_id = ?"
+	result, err := database.DB.Exec(query, post.Title, post.Content, id, userID)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error:": "failed to update post"})
+		return
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error:": "Failed to verify update"})
+		return
+	}
+
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error:": "Post not found you dont have oermission"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message:": "Post updated Successfully",
+		"Post ID:": id})
+
 }
 
 func GetPosts(c *gin.Context) {
-	var post []models.Post
-	database.DB.Find(&post)
-	c.JSON(http.StatusOK, post)
-}
 
-func GetPost(c *gin.Context) {
-	id := c.Param("id")
-	var post models.Post
-	if err := database.DB.First(&post, id); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message:": "Cant Find"})
+	userID, err := utils.GetUserId(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, "Unauthorized Account")
+		return
 	}
 
-	c.JSON(http.StatusOK, post)
+	rows, err := database.DB.Query("SELECT id, Title, Content FROM posts WHERE user_id = ?", userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error:": "Failed to get Post"})
+		return
+	}
+
+	defer rows.Close()
+
+	var posts []models.Post
+
+	for rows.Next() {
+		var post models.Post
+		err := rows.Scan(&post.ID, &post.Content, &post.Title)
+		fmt.Println(err)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error:": "Error Scanning"})
+			return
+		}
+
+		posts = append(posts, post)
+	}
+
+	c.JSON(http.StatusOK, posts)
+
 }

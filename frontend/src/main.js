@@ -8,6 +8,7 @@ import { msalInstance} from './msalConfig'
 import 'primevue/resources/themes/lara-light-indigo/theme.css';
 import 'primevue/resources/primevue.min.css';
 import 'primeicons/primeicons.css';
+import ConfirmationService from 'primevue/confirmationservice';
 
 //primevue imports
 import InputText from 'primevue/inputtext';
@@ -16,6 +17,7 @@ import Card from 'primevue/card';
 import Dialog from 'primevue/dialog';
 import Message from 'primevue/message';
 import ToastService from 'primevue/toastservice';
+import ConfirmDialog from 'primevue/confirmdialog';
 
 
 
@@ -48,7 +50,9 @@ const app = createApp(App);
 app.use(PrimeVue);
 app.use(router)
 app.use(ToastService)
+app.use(ConfirmationService); 
 app.mount('#app')
+app.component('ConfirmDialog', ConfirmDialog)
 app.component('InputText', InputText);
 app.component('Button', Button);
 app.component('Card', Card);

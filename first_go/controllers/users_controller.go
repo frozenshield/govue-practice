@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"database/sql"
 	"net/http"
 	"strconv"
 
@@ -19,96 +20,96 @@ type loginRequest struct {
 func CreateUser(c *gin.Context) {
 	var user models.Users
 	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message:": "failed to add"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Failed to add"})
 		return
 	}
 
 	hashPass, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message:": "Failed to Generate Hash"})
-		return
-	}
-	user.Password = string(hashPass)
-
-	if err := database.DB.Create(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message:": "Failed to Create User"})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to generate hash"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message:": "Account Created"})
+	query := "INSERT INTO users (username, password) VALUES (?, ?)"
+	_, err = database.DB.Exec(query, user.Username, string(hashPass))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to create user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Account created"})
 }
 
 func DeleteUser(c *gin.Context) {
 	idStr := c.Param("id")
-
-	id, err := strconv.ParseUint(idStr, 10, 64)
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message:": "Invalid Input Type"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid input type"})
 		return
 	}
 
-	var user models.Users
-	if err := database.DB.First(&user, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"message:": "Record not Found"})
+	query := "DELETE FROM users WHERE id = ?"
+	result, err := database.DB.Exec(query, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to delete user"})
+		return
+	}
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "Record not found"})
 		return
 	}
 
-	if err := database.DB.Delete(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message:": err.Error()})
-		return
-	}
-
-	database.DB.Delete(&user)
-	c.JSON(http.StatusOK, gin.H{"message:": "User Deleted Successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
 }
 
 func LoginUser(c *gin.Context) {
 	var login loginRequest
 	if err := c.ShouldBindJSON(&login); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid Input"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid input"})
 		return
 	}
 
-	var user models.Users
-	if err := database.DB.Where("username = ?", login.Username).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "Username Can't Found"})
+	query := "SELECT id, password FROM users WHERE username = ?"
+	var id int
+	var hashedPassword string
+	err := database.DB.QueryRow(query, login.Username).Scan(&id, &hashedPassword)
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "Username not found"})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Server error"})
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(login.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "Wrong Password"})
+	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(login.Password)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "Wrong password"})
 		return
 	}
 
-	token, err := utils.GenerateJWT(strconv.FormatUint(uint64(user.ID), 10))
+	token, err := utils.GenerateJWT(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to generate"})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to generate token"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Successfully Logged in!!",
-		"token": token})
+	c.JSON(http.StatusOK, gin.H{"message": "Successfully logged in", "token": token})
 }
 
 func UpdateUser(c *gin.Context) {
-
 	id := c.Param("id")
-	var user models.Users
-	if err := database.DB.Find(&user, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"message:": "Id not found"})
-		return
-	}
-
 	var updateUser models.Users
-	if err := c.BindJSON(&updateUser); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message:": "Error"})
+	if err := c.ShouldBindJSON(&updateUser); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
 		return
 	}
 
-	if err := database.DB.Model(&user).Updates(updateUser).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message:": "Failed to Update"})
+	query := "UPDATE users SET username = ?, password = ? WHERE id = ?"
+	_, err := database.DB.Exec(query, updateUser.Username, updateUser.Password, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to update user"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message:": "Updated Successfully"})
 
+	c.JSON(http.StatusOK, gin.H{"message": "Updated successfully"})
 }

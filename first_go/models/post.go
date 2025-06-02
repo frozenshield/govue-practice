@@ -6,5 +6,5 @@ type Post struct {
 	Content string `json:"content"`
 
 	UserID uint  `json:"user_id"`
-	User   Users `gorm:"foreignKey:UserID"`
+	User   Users `json:"-" gorm:"foreignKey:UserID"`
 }

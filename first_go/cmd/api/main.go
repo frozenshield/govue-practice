@@ -38,6 +38,7 @@ func main() {
 	// Connect to the database
 
 	database.ConnectDB()
+	database.MigrateDB()
 
 	r := gin.Default()
 

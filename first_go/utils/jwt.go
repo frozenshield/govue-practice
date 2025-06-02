@@ -6,12 +6,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtSecret = []byte("09569973694")
+var jwtSecret = []byte("7nnoasdFD58zhjVO+GjQLhpRl6ps2x9+bZVfolJJlpI=")
 
-func GenerateJWT(userID string) (string, error) {
+func GenerateJWT(userID int) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": userID,
-		"exp":     time.Now().Add(time.Hour * 24).Unix(),
+		"exp":     time.Now().Add(time.Minute * 15).Unix(),
 		"iat":     time.Now().Unix(),
 	}
 

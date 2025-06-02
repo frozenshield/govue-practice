@@ -1,16 +1,15 @@
 package database
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"os"
 
-	"github.com/frozenshield/first_go/models"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
+	_ "github.com/go-sql-driver/mysql"
 )
 
-var DB *gorm.DB
+var DB *sql.DB
 
 func ConnectDB() {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
@@ -21,15 +20,13 @@ func ConnectDB() {
 		os.Getenv("DB_NAME"),
 	)
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	var err error
+	DB, err = sql.Open("mysql", dsn)
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
-	fmt.Println("Connected to database successfully")
-
-	db.AutoMigrate(&models.Post{})
-	db.AutoMigrate(&models.Users{})
-
-	DB = db
+	if err := DB.Ping(); err != nil {
+		log.Fatal("Failed to ping the database:", err)
+	}
 }
